@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and productivity settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "displayName": { "type": "string", "description": "User's full name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "User's profile picture URL." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role for RBAC." },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "dailyBriefingTime": { "type": "string", "description": "Time of day for the AI briefing (e.g., '08:00')." },
+            "focusGoal": { "type": "integer", "description": "Daily goal for deep work minutes." }
+          }
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task with AI-enhanced metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique task ID." },
+        "uid": { "type": "string", "description": "Owner's user ID." },
+        "title": { "type": "string", "description": "Task title." },
+        "description": { "type": "string", "description": "Detailed task description." },
+        "priority": { "type": "integer", "description": "Eisenhower priority (1: Urgent/Important, 2: Important/Not Urgent, 3: Urgent/Not Important, 4: Neither)." },
+        "status": { "type": "string", "enum": ["todo", "in-progress", "completed"], "description": "Current task status." },
+        "dueDate": { "type": "string", "format": "date-time", "description": "Task deadline." },
+        "estimatedTime": { "type": "integer", "description": "Estimated time in minutes." },
+        "aiAnalysis": {
+          "type": "object",
+          "properties": {
+            "whyPriority": { "type": "string", "description": "AI's reasoning for the assigned priority." },
+            "suggestedApproach": { "type": "string", "description": "AI's suggested strategy for completing the task." }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the task was created." }
+      },
+      "required": ["uid", "title", "status", "createdAt"]
+    },
+    "FocusSession": {
+      "title": "Focus Session",
+      "description": "A record of a deep work session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique session ID." },
+        "uid": { "type": "string", "description": "User ID." },
+        "taskId": { "type": "string", "description": "Associated task ID (optional)." },
+        "startTime": { "type": "string", "format": "date-time", "description": "Session start time." },
+        "endTime": { "type": "string", "format": "date-time", "description": "Session end time." },
+        "duration": { "type": "integer", "description": "Duration in minutes." },
+        "focusScore": { "type": "integer", "description": "User-rated focus quality (1-10)." },
+        "notes": { "type": "string", "description": "Reflection notes from the session." }
+      },
+      "required": ["uid", "startTime", "endTime", "duration"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A contextual note linked to productivity.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique note ID." },
+        "uid": { "type": "string", "description": "User ID." },
+        "title": { "type": "string", "description": "Note title." },
+        "content": { "type": "string", "description": "Markdown content." },
+        "taskId": { "type": "string", "description": "Linked task ID (optional)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the note was created." }
+      },
+      "required": ["uid", "title", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles." },
+    "/tasks/{taskId}": { "schema": "Task", "description": "User tasks." },
+    "/focusSessions/{sessionId}": { "schema": "FocusSession", "description": "Deep work records." },
+    "/notes/{noteId}": { "schema": "Note", "description": "User notes." }
+  }
+}

@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, settings
+    //
+    // Collection: tasks
+    // Fields: id, uid, title, description, priority, status, dueDate, estimatedTime, aiAnalysis, createdAt
+    //
+    // Collection: focusSessions
+    // Fields: id, uid, taskId, startTime, endTime, duration, focusScore, notes
+    //
+    // Collection: notes
+    // Fields: id, uid, title, content, taskId, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "yeimyorellana556@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.uid is string && data.email is string &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('photoURL' in data) || data.photoURL is string) &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidTask(data) {
+      return data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.status in ['todo', 'in-progress', 'completed'] &&
+             (!('priority' in data) || (data.priority >= 1 && data.priority <= 4)) &&
+             data.createdAt is string; // Simplified for prototype
+    }
+
+    function isValidFocusSession(data) {
+      return data.uid == request.auth.uid &&
+             data.duration is number && data.duration >= 0 &&
+             data.startTime is string && data.endTime is string;
+    }
+
+    function isValidNote(data) {
+      return data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 &&
+             data.content is string &&
+             data.createdAt is string;
+    }
+
+    // Rules
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isDocOwner() && isValidTask(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /focusSessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isAuthenticated() && isValidFocusSession(request.resource.data);
+      allow update: if isDocOwner() && isValidFocusSession(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /notes/{noteId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isAuthenticated() && isValidNote(request.resource.data);
+      allow update: if isDocOwner() && isValidNote(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+  }
+}
